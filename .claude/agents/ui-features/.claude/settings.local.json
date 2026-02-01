@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(cd:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npx tsc:*)",
+      "Bash(node test-word-counter.js:*)",
+      "Bash(node:*)",
+      "Bash(pkill:*)"
+    ]
+  }
+}

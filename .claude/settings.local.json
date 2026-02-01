@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir /a \"C:\\\\Claude code projects\\\\SocialNet_Concept\")",
+      "WebSearch",
+      "Bash(dir:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(del \"\\\\?\\\\C:\\\\Claude code projects\\\\SocialNet_Concept\\\\agents\\\\design-system\\\\nul\")",
+      "Bash(cmd /c \"del /F \"\"\\\\\\\\?\\\\C:\\\\Claude code projects\\\\SocialNet_Concept\\\\agents\\\\design-system\\\\nul\"\"\")",
+      "Bash(powershell -Command \"Remove-Item -LiteralPath ''agents\\\\design-system\\\\nul'' -Force\")"
+    ]
+  }
+}
