@@ -33,11 +33,6 @@ export default function BusinessCardModal({
   const trimmedBio = user.profile.bio.trim();
   const wordCount = trimmedBio ? trimmedBio.split(/\s+/).length : 0;
 
-  // Color based on word count
-  let countColor = 'text-green-600';
-  if (wordCount >= 130 && wordCount <= 150) countColor = 'text-yellow-600';
-  if (wordCount > 150) countColor = 'text-red-600';
-
   return (
     <AnimatePresence>
       {isOpen && (
