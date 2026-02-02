@@ -31,3 +31,5 @@ coverage/
 
 # Problematic files
 agents/design-system/nul
+
+.vercel

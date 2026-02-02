@@ -69,8 +69,8 @@ export default function NFCSimulator({ onTap }: NFCSimulatorProps) {
                 disabled={isAnimating}
                 animate={isAnimating ? {
                   boxShadow: [
-                    '0 0 0 0 rgba(59, 130, 246, 0.7)',
-                    '0 0 0 40px rgba(59, 130, 246, 0)'
+                    '0 0 0 0 rgba(10, 132, 255, 0.7)',
+                    '0 0 0 40px rgba(10, 132, 255, 0)'
                   ]
                 } : {}}
                 transition={{ duration: 0.8, repeat: isAnimating ? Infinity : 0 }}

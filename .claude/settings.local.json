@@ -8,7 +8,15 @@
       "Bash(git add:*)",
       "Bash(del \"\\\\?\\\\C:\\\\Claude code projects\\\\SocialNet_Concept\\\\agents\\\\design-system\\\\nul\")",
       "Bash(cmd /c \"del /F \"\"\\\\\\\\?\\\\C:\\\\Claude code projects\\\\SocialNet_Concept\\\\agents\\\\design-system\\\\nul\"\"\")",
-      "Bash(powershell -Command \"Remove-Item -LiteralPath ''agents\\\\design-system\\\\nul'' -Force\")"
+      "Bash(powershell -Command \"Remove-Item -LiteralPath ''agents\\\\design-system\\\\nul'' -Force\")",
+      "Bash(git commit:*)",
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "Bash(npm install:*)",
+      "Bash(vercel:*)",
+      "Bash(npm run build:*)",
+      "Bash(cd:*)"
     ]
   }
 }

@@ -59,7 +59,7 @@ export default function BusinessCardModal({
             aria-labelledby="modal-title"
           >
             {/* Header */}
-            <div className="p-6 border-b border-gray-200">
+            <div className="p-6 border-b border-neutral-200">
               <div className="flex items-start justify-between">
                 <div>
                   <h2 id="modal-title" className="text-2xl font-semibold text-neutral-900 tracking-tight">
@@ -114,7 +114,7 @@ export default function BusinessCardModal({
             </div>
 
             {/* Footer */}
-            <div className="p-6 border-t border-gray-200 flex flex-col sm:flex-row gap-3">
+            <div className="p-6 border-t border-neutral-200 flex flex-col sm:flex-row gap-3">
               <button
                 onClick={() => {
                   onViewNetwork(user.id);

@@ -185,10 +185,14 @@ const NetworkGraph = ({
     const strength = originalLink?.strength || 50;
     const opacity = Math.max(0.2, strength / 100);
 
+    // Get computed link color from CSS variable
+    const styles = getComputedStyle(document.documentElement);
+    const linkColorRGB = styles.getPropertyValue('--graph-link').trim();
+
     ctx.beginPath();
     ctx.moveTo(start.x || 0, start.y || 0);
     ctx.lineTo(end.x || 0, end.y || 0);
-    ctx.strokeStyle = `rgba(var(--graph-link), ${opacity})`;
+    ctx.strokeStyle = `rgba(${linkColorRGB}, ${opacity})`;
     ctx.lineWidth = 1;
     ctx.stroke();
   }, [graphData.links]);
@@ -204,12 +208,18 @@ const NetworkGraph = ({
     const isHighlighted = highlightedNodeIds.includes(node.id);
     const isDimmed = isSearchActive && !isHighlighted && node.id !== currentUserId;
 
+    // Get computed CSS variable values
+    const styles = getComputedStyle(document.documentElement);
+    const centerNodeColor = `rgb(${styles.getPropertyValue('--graph-center-node').trim()})`;
+    const regularNodeColor = `rgb(${styles.getPropertyValue('--graph-regular-node').trim()})`;
+    const highlightNodeColor = `rgb(${styles.getPropertyValue('--graph-highlight-node').trim()})`;
+
     // Determine node color
-    let nodeColor = `rgb(var(--graph-regular-node))`;
+    let nodeColor = regularNodeColor;
     if (node.id === currentUserId) {
-      nodeColor = `rgb(var(--graph-center-node))`;
+      nodeColor = centerNodeColor;
     } else if (isHighlighted) {
-      nodeColor = `rgb(var(--graph-highlight-node))`;
+      nodeColor = highlightNodeColor;
     }
 
     // Apply dimming
@@ -232,7 +242,7 @@ const NetworkGraph = ({
     // Draw label
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillStyle = 'rgb(var(--graph-regular-node))';
+    ctx.fillStyle = regularNodeColor;
     ctx.fillText(label, node.x || 0, (node.y || 0) + nodeSize + 2);
 
     // Reset alpha
@@ -250,10 +260,10 @@ const NetworkGraph = ({
     >
       {/* Loading state */}
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-50 z-10">
+        <div className="absolute inset-0 flex items-center justify-center bg-surface-elevated z-modal-backdrop">
           <div className="text-center">
-            <div className="text-gray-600 text-lg mb-2">Building network graph...</div>
-            <div className="text-gray-400 text-sm">This may take a moment</div>
+            <div className="text-neutral-600 text-lg mb-2 font-medium">Building network graph...</div>
+            <div className="text-neutral-500 text-sm">This may take a moment</div>
           </div>
         </div>
       )}
@@ -289,7 +299,7 @@ const NetworkGraph = ({
         enablePanInteraction={true}
         minZoom={0.5}
         maxZoom={4}
-        backgroundColor="rgb(var(--graph-background))"
+        backgroundColor={`rgb(${getComputedStyle(document.documentElement).getPropertyValue('--graph-background').trim()})`}
         width={dimensions.width}
         height={dimensions.height}
       />
