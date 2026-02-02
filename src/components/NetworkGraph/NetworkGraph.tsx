@@ -184,28 +184,25 @@ const NetworkGraph = ({
     const start = typeof link.source === 'string' ? { x: 0, y: 0 } : link.source;
     const end = typeof link.target === 'string' ? { x: 0, y: 0 } : link.target;
 
-    // Find original link data to get strength
-    const sourceId = typeof link.source === 'string' ? link.source : link.source.id;
-    const targetId = typeof link.target === 'string' ? link.target : link.target.id;
+    // Find original link data to get strength (temporarily disabled for testing)
+    // const sourceId = typeof link.source === 'string' ? link.source : link.source.id;
+    // const targetId = typeof link.target === 'string' ? link.target : link.target.id;
+    // const originalLink = graphData.links.find(l =>
+    //   (l.source === sourceId && l.target === targetId) ||
+    //   (l.source === targetId && l.target === sourceId)
+    // );
 
-    const originalLink = graphData.links.find(l =>
-      (l.source === sourceId && l.target === targetId) ||
-      (l.source === targetId && l.target === sourceId)
-    );
-
-    // Link opacity based on strength
-    const strength = originalLink?.strength || 50;
-    const opacity = Math.max(0.2, strength / 100);
-
-    // Get computed link color from CSS variable
-    const styles = getComputedStyle(document.documentElement);
-    const linkColorRGB = styles.getPropertyValue('--graph-link').trim();
+    // Link opacity based on strength (temporarily disabled for testing)
+    // const strength = originalLink?.strength || 50;
+    // const opacity = Math.max(0.2, strength / 100);
+    // const styles = getComputedStyle(document.documentElement);
+    // const linkColorRGB = styles.getPropertyValue('--graph-link').trim();
 
     ctx.beginPath();
     ctx.moveTo(start.x || 0, start.y || 0);
     ctx.lineTo(end.x || 0, end.y || 0);
-    ctx.strokeStyle = `rgba(${linkColorRGB}, ${opacity})`;
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#FF00FF';  // Bright magenta for visibility
+    ctx.lineWidth = 3;  // Thicker
     ctx.stroke();
   }, [graphData.links]);
 
@@ -224,11 +221,11 @@ const NetworkGraph = ({
     const styles = getComputedStyle(document.documentElement);
     const centerNodeRaw = styles.getPropertyValue('--graph-center-node').trim();
     const regularNodeRaw = styles.getPropertyValue('--graph-regular-node').trim();
-    const highlightNodeRaw = styles.getPropertyValue('--graph-highlight-node').trim();
+    // const highlightNodeRaw = styles.getPropertyValue('--graph-highlight-node').trim();  // Unused in test
 
     const centerNodeColor = `rgb(${centerNodeRaw})`;
     const regularNodeColor = `rgb(${regularNodeRaw})`;
-    const highlightNodeColor = `rgb(${highlightNodeRaw})`;
+    // const highlightNodeColor = `rgb(${highlightNodeRaw})`;  // Unused in test version
 
     // Debug log (only for center node to avoid spam)
     if (node.id === currentUserId) {
@@ -242,36 +239,43 @@ const NetworkGraph = ({
       });
     }
 
-    // Determine node color
-    let nodeColor = regularNodeColor;
-    if (node.id === currentUserId) {
-      nodeColor = centerNodeColor;
-    } else if (isHighlighted) {
-      nodeColor = highlightNodeColor;
-    }
+    // Determine node color (temporarily disabled for testing)
+    // let nodeColor = regularNodeColor;
+    // if (node.id === currentUserId) {
+    //   nodeColor = centerNodeColor;
+    // } else if (isHighlighted) {
+    //   nodeColor = highlightNodeColor;
+    // }
 
     // Apply dimming
     if (isDimmed) {
       ctx.globalAlpha = 0.2;
     }
 
-    // Draw node circle
-    const nodeSize = node.id === currentUserId ? GRAPH_CONSTANTS.CENTER_NODE_SIZE : GRAPH_CONSTANTS.REGULAR_NODE_SIZE;
+    // Draw node circle - MUCH BIGGER for visibility
+    const nodeSize = node.id === currentUserId ? 30 : 20;  // Increased from 6-8
     ctx.beginPath();
     ctx.arc(node.x || 0, node.y || 0, nodeSize, 0, 2 * Math.PI);
-    ctx.fillStyle = nodeColor;
+
+    // FORCE BRIGHT COLORS for testing
+    if (node.id === currentUserId) {
+      ctx.fillStyle = '#00FF00';  // Bright green for center
+    } else {
+      ctx.fillStyle = '#0000FF';  // Bright blue for others
+    }
     ctx.fill();
 
-    // Draw white border for better visibility
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2 / globalScale;
+    // Draw black border for visibility
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 3;
     ctx.stroke();
 
-    // Draw label
+    // Draw label - BIGGER
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillStyle = regularNodeColor;
-    ctx.fillText(label, node.x || 0, (node.y || 0) + nodeSize + 2);
+    ctx.fillStyle = '#000000';  // Black text
+    ctx.font = '14px Sans-Serif';  // Bigger font
+    ctx.fillText(label, node.x || 0, (node.y || 0) + nodeSize + 5);
 
     // Reset alpha
     ctx.globalAlpha = 1;
@@ -307,6 +311,14 @@ const NetworkGraph = ({
         ))}
       </div>
 
+      {/* Debug overlay - shows canvas dimensions */}
+      <div className="absolute top-4 left-4 bg-black text-white p-4 rounded z-50 font-mono text-xs">
+        <div>Canvas: {dimensions.width}x{dimensions.height}</div>
+        <div>Nodes: {graphData.nodes.length}</div>
+        <div>Links: {graphData.links.length}</div>
+        <div>Loading: {isLoading ? 'YES' : 'NO'}</div>
+      </div>
+
       {/* Force graph visualization */}
       <ForceGraph2D
         ref={graphRef}
@@ -327,7 +339,7 @@ const NetworkGraph = ({
         enablePanInteraction={true}
         minZoom={0.5}
         maxZoom={4}
-        backgroundColor={`rgb(${getComputedStyle(document.documentElement).getPropertyValue('--graph-background').trim()})`}
+        backgroundColor="#FF0000"
         width={dimensions.width}
         height={dimensions.height}
       />
