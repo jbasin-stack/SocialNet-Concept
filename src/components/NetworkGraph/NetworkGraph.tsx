@@ -57,9 +57,13 @@ const NetworkGraph = ({
 }: NetworkGraphProps) => {
   const graphRef = useRef<any>(); // ForceGraph2D doesn't export proper ref type
   const [isLoading, setIsLoading] = useState(true);
-  const [dimensions, setDimensions] = useState({
-    width: typeof window !== 'undefined' ? window.innerWidth : 800,
-    height: typeof window !== 'undefined' ? window.innerHeight - HEADER_HEIGHT : 600
+  const [dimensions, setDimensions] = useState(() => {
+    const dims = {
+      width: typeof window !== 'undefined' ? window.innerWidth : 800,
+      height: typeof window !== 'undefined' ? window.innerHeight - HEADER_HEIGHT : 600
+    };
+    console.log('📐 DIMENSIONS:', dims);
+    return dims;
   });
 
   // Handle window resize
@@ -78,7 +82,14 @@ const NetworkGraph = ({
   // Memoize graph data transformations
   const graphData = useMemo(() => {
     setIsLoading(true);
-    return buildGraphData(currentUserId, users, connections);
+    const data = buildGraphData(currentUserId, users, connections);
+    console.log('🔍 GRAPH DATA:', {
+      nodeCount: data.nodes.length,
+      linkCount: data.links.length,
+      nodes: data.nodes.map(n => ({ id: n.id, name: n.name })),
+      currentUserId
+    });
+    return data;
   }, [currentUserId, users, connections]);
 
   // Configure D3 forces and apply radial constraints
@@ -154,6 +165,7 @@ const NetworkGraph = ({
 
     // Stop loading after initial layout
     const timer = setTimeout(() => {
+      console.log('✅ Loading complete, hiding overlay');
       setIsLoading(false);
     }, 300);
 
@@ -210,9 +222,25 @@ const NetworkGraph = ({
 
     // Get computed CSS variable values
     const styles = getComputedStyle(document.documentElement);
-    const centerNodeColor = `rgb(${styles.getPropertyValue('--graph-center-node').trim()})`;
-    const regularNodeColor = `rgb(${styles.getPropertyValue('--graph-regular-node').trim()})`;
-    const highlightNodeColor = `rgb(${styles.getPropertyValue('--graph-highlight-node').trim()})`;
+    const centerNodeRaw = styles.getPropertyValue('--graph-center-node').trim();
+    const regularNodeRaw = styles.getPropertyValue('--graph-regular-node').trim();
+    const highlightNodeRaw = styles.getPropertyValue('--graph-highlight-node').trim();
+
+    const centerNodeColor = `rgb(${centerNodeRaw})`;
+    const regularNodeColor = `rgb(${regularNodeRaw})`;
+    const highlightNodeColor = `rgb(${highlightNodeRaw})`;
+
+    // Debug log (only for center node to avoid spam)
+    if (node.id === currentUserId) {
+      console.log('🎨 NODE COLORS:', {
+        centerRaw: centerNodeRaw,
+        centerColor: centerNodeColor,
+        regularRaw: regularNodeRaw,
+        regularColor: regularNodeColor,
+        nodePosition: { x: node.x, y: node.y },
+        canvasSize: { width: ctx.canvas.width, height: ctx.canvas.height }
+      });
+    }
 
     // Determine node color
     let nodeColor = regularNodeColor;
