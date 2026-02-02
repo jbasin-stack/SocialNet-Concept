@@ -2,6 +2,16 @@ import { useRef, useMemo, useCallback, useEffect, useState } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import { User, Connection } from '../../types';
 import { buildGraphData } from '../../utils/graphLayout';
+import {
+  createNodeGradient,
+  drawNodeShadow,
+  drawStrengthRings,
+  calculateNodeSize,
+  calculateLinkWidth,
+  getStrengthTierLabel,
+  getStrengthTierColor,
+  getConnectionStrength
+} from '../../utils/canvasHelpers';
 
 const HEADER_HEIGHT = 104; // Matches --header-height in index.css
 
@@ -61,6 +71,12 @@ const NetworkGraph = ({
     width: typeof window !== 'undefined' ? window.innerWidth : 800,
     height: typeof window !== 'undefined' ? window.innerHeight - HEADER_HEIGHT : 600
   });
+  const [hoveredNode, setHoveredNode] = useState<D3NodeObject | null>(null);
+  const [tooltipData, setTooltipData] = useState<{
+    node: D3NodeObject;
+    x: number;
+    y: number;
+  } | null>(null);
 
   // Handle window resize
   useEffect(() => {
@@ -135,24 +151,25 @@ const NetworkGraph = ({
     }
   }, [onNodeClick]);
 
-  // Link canvas rendering with strength-based opacity
+  // Handle node hover
+  const handleNodeHover = useCallback((node: D3NodeObject | null, _previousNode: D3NodeObject | null) => {
+    setHoveredNode(node);
+    if (node) {
+      // Get mouse position from global mouse event
+      const handleMouseMove = (event: MouseEvent) => {
+        setTooltipData({ node, x: event.clientX, y: event.clientY });
+        window.removeEventListener('mousemove', handleMouseMove);
+      };
+      window.addEventListener('mousemove', handleMouseMove);
+    } else {
+      setTooltipData(null);
+    }
+  }, []);
+
+  // Link canvas rendering with strength-based opacity, thickness, and glow
   const linkCanvasObject = useCallback((link: D3LinkObject, ctx: CanvasRenderingContext2D) => {
     const start = typeof link.source === 'string' ? { x: 0, y: 0 } : link.source;
     const end = typeof link.target === 'string' ? { x: 0, y: 0 } : link.target;
-
-    // Find original link data to get strength (temporarily disabled for testing)
-    // const sourceId = typeof link.source === 'string' ? link.source : link.source.id;
-    // const targetId = typeof link.target === 'string' ? link.target : link.target.id;
-    // const originalLink = graphData.links.find(l =>
-    //   (l.source === sourceId && l.target === targetId) ||
-    //   (l.source === targetId && l.target === sourceId)
-    // );
-
-    // Link opacity based on strength (temporarily disabled for testing)
-    // const strength = originalLink?.strength || 50;
-    // const opacity = Math.max(0.2, strength / 100);
-    // const styles = getComputedStyle(document.documentElement);
-    // const linkColorRGB = styles.getPropertyValue('--graph-link').trim();
 
     // Get link strength for opacity
     const sourceId = typeof link.source === 'string' ? link.source : link.source.id;
@@ -162,20 +179,54 @@ const NetworkGraph = ({
       (l.source === targetId && l.target === sourceId)
     );
     const strength = originalLink?.strength || 50;
-    const opacity = Math.max(0.2, strength / 100);
+
+    // Check if link is connected to hovered node
+    const isConnectedToHovered = hoveredNode && (
+      sourceId === hoveredNode.id || targetId === hoveredNode.id
+    );
+
+    // Calculate opacity and width
+    let opacity = Math.max(0.2, strength / 100);
+    const lineWidth = calculateLinkWidth(strength, isConnectedToHovered || false);
+
+    // Enhance connected links on hover
+    if (isConnectedToHovered) {
+      opacity = 1;
+    }
 
     const styles = getComputedStyle(document.documentElement);
     const linkColorRGB = styles.getPropertyValue('--graph-link').trim();
 
+    // Draw glow effect for strong connections (strength >= 70) or connected to hovered
+    if (strength >= 70 || isConnectedToHovered) {
+      ctx.save();
+      ctx.shadowBlur = 6;
+      ctx.shadowColor = isConnectedToHovered
+        ? 'rgba(10, 132, 255, 0.6)'
+        : `rgba(${linkColorRGB}, 0.4)`;
+      ctx.beginPath();
+      ctx.moveTo(start.x || 0, start.y || 0);
+      ctx.lineTo(end.x || 0, end.y || 0);
+      ctx.strokeStyle = isConnectedToHovered
+        ? 'rgba(10, 132, 255, 0.8)'
+        : `rgba(${linkColorRGB}, ${opacity})`;
+      ctx.lineWidth = lineWidth + 1;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Draw main link
     ctx.beginPath();
     ctx.moveTo(start.x || 0, start.y || 0);
     ctx.lineTo(end.x || 0, end.y || 0);
-    ctx.strokeStyle = `rgba(${linkColorRGB}, ${opacity})`;
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = isConnectedToHovered
+      ? 'rgba(10, 132, 255, 0.9)'
+      : `rgba(${linkColorRGB}, ${opacity})`;
+    ctx.lineWidth = lineWidth;
     ctx.stroke();
-  }, [graphData.links]);
+  }, [graphData.links, hoveredNode]);
 
-  // Dim non-highlighted nodes when search is active
+  // Node rendering with gradients, shadows, rings, and hover effects
   const nodeCanvasObjectWithDimming = useCallback((node: D3NodeObject, ctx: CanvasRenderingContext2D, globalScale: number) => {
     const label = node.name;
     const fontSize = 12 / globalScale;
@@ -185,6 +236,8 @@ const NetworkGraph = ({
     const isSearchActive = highlightedNodeIds.length > 0;
     const isHighlighted = highlightedNodeIds.includes(node.id);
     const isDimmed = isSearchActive && !isHighlighted && node.id !== currentUserId;
+    const isCenterNode = node.id === currentUserId;
+    const isHovered = hoveredNode?.id === node.id;
 
     // Get computed CSS variable values
     const styles = getComputedStyle(document.documentElement);
@@ -192,16 +245,12 @@ const NetworkGraph = ({
     const regularNodeRaw = styles.getPropertyValue('--graph-regular-node').trim();
     const highlightNodeRaw = styles.getPropertyValue('--graph-highlight-node').trim();
 
-    const centerNodeColor = `rgb(${centerNodeRaw})`;
-    const regularNodeColor = `rgb(${regularNodeRaw})`;
-    const highlightNodeColor = `rgb(${highlightNodeRaw})`;
-
-    // Determine node color
-    let nodeColor = regularNodeColor;
-    if (node.id === currentUserId) {
-      nodeColor = centerNodeColor;
+    // Determine node color RGB (for gradients)
+    let nodeColorRGB = regularNodeRaw;
+    if (isCenterNode) {
+      nodeColorRGB = centerNodeRaw;
     } else if (isHighlighted) {
-      nodeColor = highlightNodeColor;
+      nodeColorRGB = highlightNodeRaw;
     }
 
     // Apply dimming
@@ -209,27 +258,53 @@ const NetworkGraph = ({
       ctx.globalAlpha = 0.2;
     }
 
-    // Draw node circle with proper colors
-    const nodeSize = node.id === currentUserId ? GRAPH_CONSTANTS.CENTER_NODE_SIZE : GRAPH_CONSTANTS.REGULAR_NODE_SIZE;
+    // Get connection strength for sizing and rings
+    const strength = getConnectionStrength(node);
+
+    // Calculate node size based on strength and hover state
+    const baseSize = isCenterNode ? GRAPH_CONSTANTS.CENTER_NODE_SIZE : GRAPH_CONSTANTS.REGULAR_NODE_SIZE;
+    const nodeSize = calculateNodeSize(baseSize, strength, isCenterNode, isHovered);
+
+    // Draw shadow
+    ctx.save();
+    drawNodeShadow(ctx, isCenterNode, isDimmed);
+    if (isHovered) {
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+    }
+
+    // Draw node with radial gradient
+    const gradient = createNodeGradient(ctx, node.x || 0, node.y || 0, nodeSize, nodeColorRGB, isHovered);
     ctx.beginPath();
     ctx.arc(node.x || 0, node.y || 0, nodeSize, 0, 2 * Math.PI);
-    ctx.fillStyle = nodeColor;
+    ctx.fillStyle = gradient;
     ctx.fill();
 
     // Draw white border for visibility
+    ctx.shadowBlur = 0; // Clear shadow for border
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 2 / globalScale;
     ctx.stroke();
+    ctx.restore();
 
-    // Draw label
+    // Draw strength rings (only for non-center nodes)
+    if (!isCenterNode && !isDimmed) {
+      drawStrengthRings(ctx, node.x || 0, node.y || 0, nodeSize, strength, isHovered);
+    }
+
+    // Draw label with shadow for readability
+    ctx.save();
+    ctx.shadowBlur = 3;
+    ctx.shadowColor = 'rgba(255, 255, 255, 0.9)';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillStyle = regularNodeColor;
+    ctx.fillStyle = `rgb(${regularNodeRaw})`;
     ctx.fillText(label, node.x || 0, (node.y || 0) + nodeSize + 2);
+    ctx.restore();
 
     // Reset alpha
     ctx.globalAlpha = 1;
-  }, [currentUserId, highlightedNodeIds]);
+  }, [currentUserId, highlightedNodeIds, hoveredNode]);
 
   // Get current user for aria label
   const currentUser = users.find(u => u.id === currentUserId);
@@ -261,17 +336,60 @@ const NetworkGraph = ({
         ))}
       </div>
 
+      {/* Tooltip overlay */}
+      {tooltipData && (
+        <div
+          className="fixed z-tooltip pointer-events-none"
+          style={{
+            left: `${tooltipData.x + 16}px`,
+            top: `${tooltipData.y + 16}px`
+          }}
+        >
+          <div className="glass rounded-lg shadow-elevated px-3 py-2 max-w-xs">
+            <div className="text-sm font-medium text-neutral-900 mb-1">
+              {tooltipData.node.name}
+            </div>
+            {tooltipData.node.user.profile.location && (
+              <div className="text-xs text-neutral-600 mb-1">
+                📍 {tooltipData.node.user.profile.location}
+              </div>
+            )}
+            {tooltipData.node.id !== currentUserId && (
+              <div className={`text-xs font-medium mb-1 ${getStrengthTierColor(getConnectionStrength(tooltipData.node))}`}>
+                {getStrengthTierLabel(getConnectionStrength(tooltipData.node))} Connection
+              </div>
+            )}
+            {tooltipData.node.user.profile.interests.length > 0 && (
+              <div className="text-xs text-neutral-500 line-clamp-2">
+                {tooltipData.node.user.profile.interests.slice(0, 3).join(' • ')}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Force graph visualization */}
       <ForceGraph2D
         ref={graphRef}
         graphData={graphData}
         nodeId="id"
-        nodeLabel="name"
+        nodeLabel={() => ''} // Disable default tooltip (we have custom tooltip)
         linkSource="source"
         linkTarget="target"
         nodeRelSize={GRAPH_CONSTANTS.REGULAR_NODE_SIZE}
         onNodeClick={handleNodeClick}
+        onNodeHover={handleNodeHover}
         nodeCanvasObject={nodeCanvasObjectWithDimming}
+        nodePointerAreaPaint={(node, color, ctx) => {
+          // Define hover area (1.5x node radius)
+          const baseSize = node.id === currentUserId ? GRAPH_CONSTANTS.CENTER_NODE_SIZE : GRAPH_CONSTANTS.REGULAR_NODE_SIZE;
+          const strength = getConnectionStrength(node as D3NodeObject);
+          const nodeSize = calculateNodeSize(baseSize, strength, node.id === currentUserId, false);
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(node.x || 0, node.y || 0, nodeSize * 1.5, 0, 2 * Math.PI);
+          ctx.fill();
+        }}
         linkCanvasObject={linkCanvasObject}
         d3VelocityDecay={0.4}
         d3AlphaDecay={0.0228}

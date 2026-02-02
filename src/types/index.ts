@@ -41,3 +41,18 @@ export interface GraphData {
 export interface DistanceStrategy {
   (connection: Connection): number;
 }
+
+// Extended types for D3 node objects
+export interface D3NodeObject {
+  id: string;
+  name: string;
+  x?: number;
+  y?: number;
+  fx?: number | null;
+  fy?: number | null;
+  vx?: number;
+  vy?: number;
+  strength?: number;
+  connectionStrength?: number;
+  user: User;
+}
