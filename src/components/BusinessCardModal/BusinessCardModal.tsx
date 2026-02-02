@@ -53,7 +53,7 @@ export default function BusinessCardModal({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 50, scale: 0.95 }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
-            className="fixed inset-x-4 bottom-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 bg-surface-elevated rounded-2xl shadow-elevated z-modal max-w-2xl w-full overflow-hidden"
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-elevated z-modal w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden flex flex-col"
             role="dialog"
             aria-modal="true"
             aria-labelledby="modal-title"
@@ -81,7 +81,7 @@ export default function BusinessCardModal({
             </div>
 
             {/* Content */}
-            <div className="p-6 space-y-4 max-h-96 overflow-y-auto">
+            <div className="p-6 space-y-4 overflow-y-auto flex-1">
               {/* Bio */}
               <div>
                 <h3 className="text-sm font-semibold text-neutral-700 mb-2 uppercase tracking-wide">Bio</h3>

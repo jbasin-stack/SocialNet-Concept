@@ -57,13 +57,9 @@ const NetworkGraph = ({
 }: NetworkGraphProps) => {
   const graphRef = useRef<any>(); // ForceGraph2D doesn't export proper ref type
   const [isLoading, setIsLoading] = useState(true);
-  const [dimensions, setDimensions] = useState(() => {
-    const dims = {
-      width: typeof window !== 'undefined' ? window.innerWidth : 800,
-      height: typeof window !== 'undefined' ? window.innerHeight - HEADER_HEIGHT : 600
-    };
-    console.log('📐 DIMENSIONS:', dims);
-    return dims;
+  const [dimensions, setDimensions] = useState({
+    width: typeof window !== 'undefined' ? window.innerWidth : 800,
+    height: typeof window !== 'undefined' ? window.innerHeight - HEADER_HEIGHT : 600
   });
 
   // Handle window resize
@@ -82,14 +78,7 @@ const NetworkGraph = ({
   // Memoize graph data transformations
   const graphData = useMemo(() => {
     setIsLoading(true);
-    const data = buildGraphData(currentUserId, users, connections);
-    console.log('🔍 GRAPH DATA:', {
-      nodeCount: data.nodes.length,
-      linkCount: data.links.length,
-      nodes: data.nodes.map(n => ({ id: n.id, name: n.name })),
-      currentUserId
-    });
-    return data;
+    return buildGraphData(currentUserId, users, connections);
   }, [currentUserId, users, connections]);
 
   // Configure D3 forces and apply radial constraints
@@ -133,7 +122,6 @@ const NetworkGraph = ({
 
     // Stop loading after initial layout
     const timer = setTimeout(() => {
-      console.log('✅ Loading complete, hiding overlay');
       setIsLoading(false);
     }, 300);
 
@@ -149,8 +137,6 @@ const NetworkGraph = ({
 
   // Link canvas rendering with strength-based opacity
   const linkCanvasObject = useCallback((link: D3LinkObject, ctx: CanvasRenderingContext2D) => {
-    console.log('🔗 LINK RENDER CALLED');
-
     const start = typeof link.source === 'string' ? { x: 0, y: 0 } : link.source;
     const end = typeof link.target === 'string' ? { x: 0, y: 0 } : link.target;
 
@@ -168,18 +154,29 @@ const NetworkGraph = ({
     // const styles = getComputedStyle(document.documentElement);
     // const linkColorRGB = styles.getPropertyValue('--graph-link').trim();
 
+    // Get link strength for opacity
+    const sourceId = typeof link.source === 'string' ? link.source : link.source.id;
+    const targetId = typeof link.target === 'string' ? link.target : link.target.id;
+    const originalLink = graphData.links.find(l =>
+      (l.source === sourceId && l.target === targetId) ||
+      (l.source === targetId && l.target === sourceId)
+    );
+    const strength = originalLink?.strength || 50;
+    const opacity = Math.max(0.2, strength / 100);
+
+    const styles = getComputedStyle(document.documentElement);
+    const linkColorRGB = styles.getPropertyValue('--graph-link').trim();
+
     ctx.beginPath();
     ctx.moveTo(start.x || 0, start.y || 0);
     ctx.lineTo(end.x || 0, end.y || 0);
-    ctx.strokeStyle = '#FF00FF';  // Bright magenta for visibility
-    ctx.lineWidth = 3;  // Thicker
+    ctx.strokeStyle = `rgba(${linkColorRGB}, ${opacity})`;
+    ctx.lineWidth = 1;
     ctx.stroke();
   }, [graphData.links]);
 
   // Dim non-highlighted nodes when search is active
   const nodeCanvasObjectWithDimming = useCallback((node: D3NodeObject, ctx: CanvasRenderingContext2D, globalScale: number) => {
-    console.log('🎯 NODE RENDER CALLED:', { id: node.id, name: node.name, x: node.x, y: node.y });
-
     const label = node.name;
     const fontSize = 12 / globalScale;
     ctx.font = `${fontSize}px Sans-Serif`;
@@ -193,61 +190,42 @@ const NetworkGraph = ({
     const styles = getComputedStyle(document.documentElement);
     const centerNodeRaw = styles.getPropertyValue('--graph-center-node').trim();
     const regularNodeRaw = styles.getPropertyValue('--graph-regular-node').trim();
-    // const highlightNodeRaw = styles.getPropertyValue('--graph-highlight-node').trim();  // Unused in test
+    const highlightNodeRaw = styles.getPropertyValue('--graph-highlight-node').trim();
 
     const centerNodeColor = `rgb(${centerNodeRaw})`;
     const regularNodeColor = `rgb(${regularNodeRaw})`;
-    // const highlightNodeColor = `rgb(${highlightNodeRaw})`;  // Unused in test version
+    const highlightNodeColor = `rgb(${highlightNodeRaw})`;
 
-    // Debug log (only for center node to avoid spam)
+    // Determine node color
+    let nodeColor = regularNodeColor;
     if (node.id === currentUserId) {
-      console.log('🎨 NODE COLORS:', {
-        centerRaw: centerNodeRaw,
-        centerColor: centerNodeColor,
-        regularRaw: regularNodeRaw,
-        regularColor: regularNodeColor,
-        nodePosition: { x: node.x, y: node.y },
-        canvasSize: { width: ctx.canvas.width, height: ctx.canvas.height }
-      });
+      nodeColor = centerNodeColor;
+    } else if (isHighlighted) {
+      nodeColor = highlightNodeColor;
     }
-
-    // Determine node color (temporarily disabled for testing)
-    // let nodeColor = regularNodeColor;
-    // if (node.id === currentUserId) {
-    //   nodeColor = centerNodeColor;
-    // } else if (isHighlighted) {
-    //   nodeColor = highlightNodeColor;
-    // }
 
     // Apply dimming
     if (isDimmed) {
       ctx.globalAlpha = 0.2;
     }
 
-    // Draw node circle - MUCH BIGGER for visibility
-    const nodeSize = node.id === currentUserId ? 30 : 20;  // Increased from 6-8
+    // Draw node circle with proper colors
+    const nodeSize = node.id === currentUserId ? GRAPH_CONSTANTS.CENTER_NODE_SIZE : GRAPH_CONSTANTS.REGULAR_NODE_SIZE;
     ctx.beginPath();
     ctx.arc(node.x || 0, node.y || 0, nodeSize, 0, 2 * Math.PI);
-
-    // FORCE BRIGHT COLORS for testing
-    if (node.id === currentUserId) {
-      ctx.fillStyle = '#00FF00';  // Bright green for center
-    } else {
-      ctx.fillStyle = '#0000FF';  // Bright blue for others
-    }
+    ctx.fillStyle = nodeColor;
     ctx.fill();
 
-    // Draw black border for visibility
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 3;
+    // Draw white border for visibility
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2 / globalScale;
     ctx.stroke();
 
-    // Draw label - BIGGER
+    // Draw label
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillStyle = '#000000';  // Black text
-    ctx.font = '14px Sans-Serif';  // Bigger font
-    ctx.fillText(label, node.x || 0, (node.y || 0) + nodeSize + 5);
+    ctx.fillStyle = regularNodeColor;
+    ctx.fillText(label, node.x || 0, (node.y || 0) + nodeSize + 2);
 
     // Reset alpha
     ctx.globalAlpha = 1;
@@ -283,16 +261,6 @@ const NetworkGraph = ({
         ))}
       </div>
 
-      {/* Debug overlay - shows canvas dimensions */}
-      <div className="absolute top-4 left-4 bg-black text-white p-4 rounded z-50 font-mono text-xs space-y-1">
-        <div>Canvas: {dimensions.width}x{dimensions.height}</div>
-        <div>Nodes: {graphData.nodes.length}</div>
-        <div>Links: {graphData.links.length}</div>
-        <div>Loading: {isLoading ? 'YES' : 'NO'}</div>
-        <div>GraphRef: {graphRef.current ? 'ATTACHED' : 'NULL'}</div>
-        <div className="text-yellow-300 mt-2">Check console for render logs!</div>
-      </div>
-
       {/* Force graph visualization */}
       <ForceGraph2D
         ref={graphRef}
@@ -313,7 +281,7 @@ const NetworkGraph = ({
         enablePanInteraction={true}
         minZoom={0.5}
         maxZoom={4}
-        backgroundColor="#FF0000"
+        backgroundColor={`rgb(${getComputedStyle(document.documentElement).getPropertyValue('--graph-background').trim()})`}
         width={dimensions.width}
         height={dimensions.height}
       />
