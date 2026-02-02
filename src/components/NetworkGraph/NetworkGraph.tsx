@@ -181,6 +181,8 @@ const NetworkGraph = ({
 
   // Link canvas rendering with strength-based opacity
   const linkCanvasObject = useCallback((link: D3LinkObject, ctx: CanvasRenderingContext2D) => {
+    console.log('🔗 LINK RENDER CALLED');
+
     const start = typeof link.source === 'string' ? { x: 0, y: 0 } : link.source;
     const end = typeof link.target === 'string' ? { x: 0, y: 0 } : link.target;
 
@@ -208,6 +210,8 @@ const NetworkGraph = ({
 
   // Dim non-highlighted nodes when search is active
   const nodeCanvasObjectWithDimming = useCallback((node: D3NodeObject, ctx: CanvasRenderingContext2D, globalScale: number) => {
+    console.log('🎯 NODE RENDER CALLED:', { id: node.id, name: node.name, x: node.x, y: node.y });
+
     const label = node.name;
     const fontSize = 12 / globalScale;
     ctx.font = `${fontSize}px Sans-Serif`;
@@ -312,11 +316,13 @@ const NetworkGraph = ({
       </div>
 
       {/* Debug overlay - shows canvas dimensions */}
-      <div className="absolute top-4 left-4 bg-black text-white p-4 rounded z-50 font-mono text-xs">
+      <div className="absolute top-4 left-4 bg-black text-white p-4 rounded z-50 font-mono text-xs space-y-1">
         <div>Canvas: {dimensions.width}x{dimensions.height}</div>
         <div>Nodes: {graphData.nodes.length}</div>
         <div>Links: {graphData.links.length}</div>
         <div>Loading: {isLoading ? 'YES' : 'NO'}</div>
+        <div>GraphRef: {graphRef.current ? 'ATTACHED' : 'NULL'}</div>
+        <div className="text-yellow-300 mt-2">Check console for render logs!</div>
       </div>
 
       {/* Force graph visualization */}
