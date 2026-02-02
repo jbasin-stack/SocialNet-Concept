@@ -128,40 +128,8 @@ const NetworkGraph = ({
     // Add collision force
     fg.d3Force('collide', (window as any).d3?.forceCollide?.(GRAPH_CONSTANTS.COLLISION_RADIUS));
 
-    // Custom radial force (runs every tick, not just once)
-    fg.d3Force('radial', () => {
-      const nodes = fg.graphData().nodes as D3NodeObject[];
-      const connectedNodes = nodes.filter((n: D3NodeObject) => n.id !== currentUserId);
-
-      nodes.forEach((node: D3NodeObject) => {
-        if (node.id === currentUserId) {
-          // Center node: pull towards origin with damping
-          node.vx = (node.vx || 0) * 0.5 - (node.x || 0) * 0.1;
-          node.vy = (node.vy || 0) * 0.5 - (node.y || 0) * 0.1;
-        } else {
-          // Connected nodes: pull towards ideal radial position
-          const nodeIndex = connectedNodes.findIndex((n: D3NodeObject) => n.id === node.id);
-          const originalNode = graphData.nodes.find(n => n.id === node.id);
-
-          if (nodeIndex !== -1 && originalNode?.strength !== undefined) {
-            const angle = (nodeIndex / connectedNodes.length) * 2 * Math.PI;
-            const targetDistance = GRAPH_CONSTANTS.BASE_DISTANCE +
-                                  (100 - originalNode.strength) * GRAPH_CONSTANTS.STRENGTH_MULTIPLIER;
-
-            const targetX = targetDistance * Math.cos(angle);
-            const targetY = targetDistance * Math.sin(angle);
-
-            // Apply velocity towards target position
-            const dx = targetX - (node.x || 0);
-            const dy = targetY - (node.y || 0);
-            const strength = GRAPH_CONSTANTS.RADIAL_CONSTRAINT_STRENGTH;
-
-            node.vx = (node.vx || 0) + dx * strength * 0.1;
-            node.vy = (node.vy || 0) + dy * strength * 0.1;
-          }
-        }
-      });
-    });
+    // REMOVED broken radial force - let D3 handle positioning naturally
+    // The standard forces (link, charge, center, collide) will position nodes correctly
 
     // Stop loading after initial layout
     const timer = setTimeout(() => {
